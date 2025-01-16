@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from scipy.signal import hilbert
+
 
 
 def test():
@@ -23,10 +25,14 @@ def main():
     step_time = np.delete(step_time, 0)
     step_val = np.loadtxt("step_val.csv", delimiter=",")
     step_val = np.delete(step_val, 0)
+
     time = np.loadtxt("time.csv", delimiter=",")
     time = np.delete(time, 0)
     z1 = np.loadtxt("z1.csv", delimiter=",")
     z1 = np.delete(z1, 0)
+    analytic_signal = hilbert(z1)
+    envelope = np.abs(analytic_signal)
+    envelope = (envelope - np.min(envelope)) / (np.max(envelope) - np.min(envelope))
 
 
 
@@ -41,12 +47,12 @@ def main():
     print("n_step", n_step)
     print("parity size", parity.size)
     parity_plot = np.repeat(parity, n_data)
-    parity_plot *= 1e-25
+    #parity_plot *= 1e-25
     print(parity_plot.size)
 
     # plot
     plt.figure()
-    plt.plot(time, z1)
+    plt.plot(time, envelope)
     plt.plot(time, parity_plot)
     plt.show()
 
@@ -58,20 +64,25 @@ def main():
     x_data = np.zeros((n_step, n_node))
     y_data = np.zeros(n_step)
 
-    points = z1[::100]
+    points = envelope[::100]
     for i in range(n_step):
         x_data[i] = points[i*n_node:(i+1)*n_node]
         y_data[i] = parity[i]
     y_data = (y_data+1)/2
     #y_data = np.expand_dims(y_data, axis=1)
+
     y_onehot = tf.keras.utils.to_categorical(y_data, num_classes=2)
+    # x_data = x_data[10:190,:]
+    # y_onehot = y_onehot[10:190,:]
     dataset = tf.data.Dataset.from_tensor_slices((x_data, y_onehot))
-    batch_size = 20
+    batch_size = 10
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
-    #print(x_data.shape)
-    #print(y_onehot.shape)
+    print("xshape",x_data.shape)
+    print("yshape",y_onehot.shape)
     #print(y_onehot)
+
+
 
     # create model
     model = tf.keras.models.Sequential([
@@ -79,7 +90,7 @@ def main():
     ])
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['accuracy'])
-    model.fit(dataset, epochs=100)
+    model.fit(dataset, epochs=1000)
 
 if __name__ == '__main__':
     main()

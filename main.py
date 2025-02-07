@@ -7,8 +7,8 @@ from scipy.signal import hilbert
 
 # Define Softmax with Temperature as a Custom Activation Function
 @tf.function
-def softmax_with_temperature(logits, temperature=5.0):
-    return tf.nn.softmax(logits / temperature)
+def softmax_with_temperature(logits, temperature=0.5):
+    return tf.nn.softmax(logits / 0.0005)
 
 temperature = tf.Variable(5.0, trainable=False, dtype=tf.float32)
 
@@ -80,7 +80,7 @@ def main():
     # x_data = x_data[10:190,:]
     # y_onehot = y_onehot[10:190,:]
     dataset = tf.data.Dataset.from_tensor_slices((x_data, y_onehot))
-    batch_size = 5000
+    batch_size = 1000
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
     print("xshape",x_data.shape)
@@ -90,28 +90,29 @@ def main():
 
     # create model
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(2, input_shape=(n_node,), activation='relu')
-        #tf.keras.layers.Dense(2, input_shape=(n_node,), activation=lambda x: softmax_with_temperature(x, temperature)),
+        #tf.keras.layers.Dense(2, input_shape=(n_node,), activation='relu')
+        tf.keras.layers.Dense(2, input_shape=(n_node,), activation=lambda x: softmax_with_temperature(x, temperature)),
     ])
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
     # Function to decrease temperature over epochs
     def temperature_scheduler(epoch, logs):
-        new_temp = max(0.5, 5.0 * (0.9 ** epoch))  # Reduce temp gradually
+        new_temp = max(0.1, 1 * (0.9 ** epoch))  # Reduce temp gradually
         temperature.assign(new_temp)  # Update global temperature variable
 
     # Callback to update temperature
     temp_callback = tf.keras.callbacks.LambdaCallback(on_epoch_end=temperature_scheduler)
 
-    #history = model.fit(dataset, epochs=5000, verbose=1, callbacks=[temp_callback])
-    history = model.fit(dataset, epochs=2000, verbose=1)
+    history = model.fit(dataset, epochs=10000, verbose=1, callbacks=[temp_callback])
+    #history = model.fit(dataset, epochs=2000, verbose=1)
     plt.plot(history.history['loss'], label='Training Loss')
     predictions = model.predict(x_data)
 
     predictions = predictions[:,0]
-    predictions = predictions * 0.5 - 1
+    predictions = predictions - 1.5
     predictions = np.repeat(predictions, n_data)
+    print(predictions)
 
     # plot
     plt.figure()

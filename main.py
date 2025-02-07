@@ -5,10 +5,9 @@ from scipy.signal import hilbert
 
 
 
-def test():
-    test1 = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
-    test2 = test1[::2]
-    print(test2)
+
+
+
 def parity_benchmark(step_val, n):
     step_val = step_val * 2 - 1
     # parity benchmark, e.g. when n = 3, the parity is $\prod_{i=0}^2 u(t-(i+\tau) T)$, u is the step function from input
@@ -33,11 +32,12 @@ def main():
     analytic_signal = hilbert(z1)
     envelope = np.abs(analytic_signal)
     envelope = (envelope - np.min(envelope)) / (np.max(envelope) - np.min(envelope))
+    print(envelope.shape)
 
 
 
 # parity order
-    n = 5
+    n = 2
     parity = parity_benchmark(step_val, n)
     n_data = time.size // parity.size
     n_step = step_time.size
@@ -57,11 +57,12 @@ def main():
 
 
     # create data set
-    n_node = n_data // 50
+    n_gap = 50
+    n_node = n_data // n_gap
     x_data = np.zeros((n_step, n_node))
     y_data = np.zeros(n_step)
 
-    points = envelope[::50]
+    points = envelope[::n_gap]
     for i in range(n_step):
         x_data[i] = points[i*n_node:(i+1)*n_node]
         y_data[i] = parity[i]
@@ -72,7 +73,7 @@ def main():
     # x_data = x_data[10:190,:]
     # y_onehot = y_onehot[10:190,:]
     dataset = tf.data.Dataset.from_tensor_slices((x_data, y_onehot))
-    batch_size = 50
+    batch_size = 5000
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
     print("xshape",x_data.shape)
@@ -80,15 +81,14 @@ def main():
     #print(y_onehot)
 
 
-
     # create model
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(2, input_shape=(n_node,), activation='sigmoid'),
+        tf.keras.layers.Dense(2, input_shape=(n_node,), activation='relu'),
     ])
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-    model.fit(dataset, epochs=1000)
-
+    history = model.fit(dataset, epochs=10000, verbose=1)
+    plt.plot(history.history['loss'], label='Training Loss')
     predictions = model.predict(x_data)
 
     predictions = predictions[:,0]
@@ -97,13 +97,14 @@ def main():
 
     # plot
     plt.figure()
-    # plt.plot(time[:len(time)//2], envelope[:len(envelope)//2])
-    # plt.plot(time[:len(time)//2], parity_plot[:len(parity_plot)//2])
-    # plt.plot(time[:len(time)//2],predictions[:len(predictions)//2])
+    scale = 1000
+    plt.plot(time[:len(time)//scale], envelope[:len(envelope)//scale])
+    plt.plot(time[:len(time)//scale], parity_plot[:len(parity_plot)//scale])
+    plt.plot(time[:len(time)//scale],predictions[:len(predictions)//scale])
 
-    plt.plot(time, envelope)
-    plt.plot(time, parity_plot)
-    plt.plot(time, predictions)
+    # plt.plot(time, envelope)
+    # plt.plot(time, parity_plot)
+    # plt.plot(time, predictions)
     plt.show()
 
 if __name__ == '__main__':

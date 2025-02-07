@@ -54,8 +54,6 @@ def main():
 
 
 
-
-
     # create data set
     n_gap = 50
     n_node = n_data // n_gap
@@ -72,7 +70,7 @@ def main():
     y_onehot = tf.keras.utils.to_categorical(y_data, num_classes=2)
     # x_data = x_data[10:190,:]
     # y_onehot = y_onehot[10:190,:]
-    dataset = tf.data.Dataset.from_tensor_slices((x_data, y_onehot))
+    dataset = tf.data.Dataset.from_tensor_slices((x_data, y_data))
     batch_size = 5000
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
@@ -83,11 +81,11 @@ def main():
 
     # create model
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(2, input_shape=(n_node,), activation='relu'),
+        tf.keras.layers.Dense(1, input_shape=(n_node,), activation='sigmoid'),
     ])
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-    history = model.fit(dataset, epochs=10000, verbose=1)
+    history = model.fit(dataset, epochs=2000, verbose=1)
     plt.plot(history.history['loss'], label='Training Loss')
     predictions = model.predict(x_data)
 

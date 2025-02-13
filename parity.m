@@ -20,7 +20,7 @@ Q = 330;                % Quality factor
 
 % Time settings
 t_min = 0;                    % Start time (s)
-t_max = 5e-2;                % End time (s)
+t_max = 5e-4;                % End time (s)
 dt = 1e-9;                    % Time step (s)
 time = t_min:dt:t_max;        % Time array
 
@@ -47,18 +47,18 @@ kc=-((epsilon_0*A)/d0^3)*(VAC2-VAC1)^2;
 
 
 
-steps = 25000;
+steps =2500;
 tau = (t_max - t_min)/steps;
-step_val = randi([0 1], 1, steps+1);
+%step_val = randi([0 1], 1, steps+1);
 %%step_val = [ones(1,steps/2), zeros(1,steps/2+1)];
-%step_val = 2*randi([0 1], 1, steps+1) - 1;
+step_val = 2*randi([0 1], 1, steps+1) - 1;
 step_time = linspace(t_min, t_max, steps+1);
 step_function = @(t) interp1(step_time, step_val, t, 'previous', 'extrap');
 
 
 %% Elec force
 
-F_elec1 = @(t,y) step_function(t)* (epsilon_0*A*(VDC+VAC1)^2/(g0-y(1))^2)*sin(omega0 * t);  % External force on resonator 1
+F_elec1 = @(t,y) step_function(t) + 0.5 * (epsilon_0*A*(VDC+VAC1)^2/(g0-y(1))^2)*sin(omega0 * t);  % External force on resonator 1
 F_elec2 = @(t,y) 0;  % External force on resonator 2
 
 
@@ -96,11 +96,12 @@ for i = 1:size(time,2)-1
 end
 
 %% Plot the results
+
 figure;
 subplot(2,1,1);
-plot(time, z1, 'b-', 'LineWidth', 2);
+plot(time, v1, 'b-', 'LineWidth', 2);
 hold on;
-plot(time, z2, 'r-', 'LineWidth', 1);
+plot(time, v2, 'r-', 'LineWidth', 1);
 %hold on;
 %stairs(step_time, step_val, 'LineWidth', 1.5);
 hold off;
@@ -109,7 +110,7 @@ hold off;
 xlabel('Time (s)', 'FontSize', 12);
 ylabel('Displacement (m)', 'FontSize', 12);
 title('Time-Domain Response of Coupled NEMS Resonators', 'FontSize', 14);
-legend('z_1(t)', 'z_2(t)', 'Location', 'best');
+legend('v_1(t)', 'v_2(t)', 'Location', 'best');
 grid on;
 
 

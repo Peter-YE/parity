@@ -9,7 +9,7 @@ from scipy.signal import hilbert
 
 
 def parity_benchmark(step_val, n):
-    step_val = step_val * 2 - 1
+    #step_val = step_val * 2 - 1
     # parity benchmark, e.g. when n = 3, the parity is $\prod_{i=0}^2 u(t-(i+\tau) T)$, u is the step function from input
     parity = np.ones(step_val.size)
     for p in range(parity.size - n + 1):
@@ -85,9 +85,9 @@ def main():
     model = tf.keras.models.Sequential([
         tf.keras.layers.Dense(2, input_shape=(n_node,), activation='relu'),
     ])
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-    history = model.fit(dataset, epochs=10000, verbose=1)
+    history = model.fit(dataset, epochs=1000, verbose=1)
     plt.plot(history.history['loss'], label='Training Loss')
     predictions = model.predict(x_data)
 
@@ -97,7 +97,7 @@ def main():
 
     # plot
     plt.figure()
-    scale = 1000
+    scale = 100
     plt.plot(time[:len(time)//scale], envelope[:len(envelope)//scale])
     plt.plot(time[:len(time)//scale], parity_plot[:len(parity_plot)//scale])
     plt.plot(time[:len(time)//scale],predictions[:len(predictions)//scale])

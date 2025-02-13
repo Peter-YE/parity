@@ -20,8 +20,8 @@ Q = 330;                % Quality factor
 
 % Time settings
 t_min = 0;                    % Start time (s)
-t_max = 5e-5;                % End time (s)
-dt = 1e-12;                    % Time step (s)
+t_max = 5e-2;                % End time (s)
+dt = 1e-9;                    % Time step (s)
 time = t_min:dt:t_max;        % Time array
 
 % Initial conditions
@@ -47,11 +47,11 @@ kc=-((epsilon_0*A)/d0^3)*(VAC2-VAC1)^2;
 
 
 
-steps = 50;
+steps = 25000;
 tau = (t_max - t_min)/steps;
 step_val = randi([0 1], 1, steps+1);
-step_val = [ones(1,steps/2), zeros(1,steps/2+1)];
-%%step_val = 2*randi([0 1], 1, steps+1) - 1;
+%%step_val = [ones(1,steps/2), zeros(1,steps/2+1)];
+%step_val = 2*randi([0 1], 1, steps+1) - 1;
 step_time = linspace(t_min, t_max, steps+1);
 step_function = @(t) interp1(step_time, step_val, t, 'previous', 'extrap');
 

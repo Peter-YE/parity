@@ -5,6 +5,12 @@ from scipy.signal import hilbert
 
 
 
+def envelope_extraction(signal, window_size=50):
+    "resembles RMS-DC converter using a moving average filter"
+    squared = np.square(signal)
+    window = np.ones(window_size) / window_size
+    envelope = np.convolve(squared, window, mode='same')
+    return np.sqrt(envelope)
 
 
 
@@ -29,7 +35,7 @@ def main():
     time = np.delete(time, 0)
     z1 = np.loadtxt("z1.csv", delimiter=",")
     z1 = np.delete(z1, 0)
-    analytic_signal = hilbert(z1)
+    analytic_signal = envelope_extraction(z1)
     envelope = np.abs(analytic_signal)
     envelope = (envelope - np.min(envelope)) / (np.max(envelope) - np.min(envelope))
     print(envelope.shape)
@@ -87,12 +93,12 @@ def main():
     ])
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-    history = model.fit(dataset, epochs=1000, verbose=1)
+    history = model.fit(dataset, epochs=5000, verbose=1)
     plt.plot(history.history['loss'], label='Training Loss')
     predictions = model.predict(x_data)
 
     predictions = predictions[:,0]
-    predictions = predictions * 0.5 - 1
+    predictions = predictions  - 1.5
     predictions = np.repeat(predictions, n_data)
 
     # plot

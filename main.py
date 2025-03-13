@@ -27,33 +27,30 @@ def main():
 
     # Load data
     step_time = np.loadtxt("step_time.csv", delimiter=",")
-    step_time = np.delete(step_time, 0)
     step_val = np.loadtxt("step_val.csv", delimiter=",")
-    step_val = np.delete(step_val, 0)
 
     time = np.loadtxt("time.csv", delimiter=",")
-    time = np.delete(time, 0)
     z1 = np.loadtxt("z1.csv", delimiter=",")
-    z1 = np.delete(z1, 0)
 
     # Extract envelope
     envelope = envelope_extraction(z1)
     envelope = (envelope - np.min(envelope)) / (np.max(envelope) - np.min(envelope))
-
     # Calculate parity at each step
     n = 2  # Parity order
     parity = parity_benchmark(step_val, n)
 
     # Create dataset with n_node
     n_node = 50  # Number of past steps to use as input features
-    n_step = len(parity) - n_node + 1  # Number of samples after creating windows
-
+    n_step = len(parity)  # Number of samples after creating windows
+    indices = np.linspace(0, len(envelope) - 1, n_node*n_step, dtype=int)
+    envelope = envelope[indices]
     x_data = np.zeros((n_step, n_node))
     y_data = np.zeros(n_step)
 
     for i in range(n_step):
-        x_data[i] = envelope[i:i + n_node]  # Use a window of n_node values
-        y_data[i] = parity[i + n_node - 1]  # Use parity at the current step
+        test = envelope[i*n_node:i*n_node + n_node]
+        x_data[i] = envelope[i*n_node:i*n_node + n_node]  # Use a window of n_node values
+        y_data[i] = parity[i]  # Use parity at the current step
     y_data = (y_data + 1) / 2
     # Convert y_data to one-hot encoding
     y_onehot = tf.keras.utils.to_categorical(y_data, num_classes=2)
@@ -79,13 +76,13 @@ def main():
     n_data = time.size // parity.size
 
     plt.figure()
-    plot_time = time[1:500]
+    plot_time = time[500:1000]
     #plt.plot(time[n_node - 1:], envelope[n_node - 1:], label='Envelope')
     parity = np.repeat(parity,10)
     predictions = predictions*2 - 1
     predictions = np.repeat(predictions,10)
-    plt.plot(plot_time,parity[1:500], label='Parity')
-    plt.plot(plot_time,predictions[1:500], label='Predictions', linestyle='--')
+    plt.plot(plot_time,parity[500:1000], label='Parity')
+    plt.plot(plot_time,predictions[500:1000], label='Predictions', linestyle='--')
     plt.legend()
     plt.show()
 

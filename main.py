@@ -42,14 +42,14 @@ def main():
     # Create dataset with n_node
     n_node = 50  # Number of past steps to use as input features
     n_step = len(parity)  # Number of samples after creating windows
-    indices = np.linspace(0, len(envelope) - 1, n_node*n_step, dtype=int)
+    indices = np.linspace(0, len(envelope) - 1, n_node * n_step, dtype=int)
     envelope = envelope[indices]
     x_data = np.zeros((n_step, n_node))
     y_data = np.zeros(n_step)
 
     for i in range(n_step):
-        test = envelope[i*n_node:i*n_node + n_node]
-        x_data[i] = envelope[i*n_node:i*n_node + n_node]  # Use a window of n_node values
+        test = envelope[i * n_node:i * n_node + n_node]
+        x_data[i] = envelope[i * n_node:i * n_node + n_node]  # Use a window of n_node values
         y_data[i] = parity[i]  # Use parity at the current step
     y_data = (y_data + 1) / 2
     # Convert y_data to one-hot encoding
@@ -60,15 +60,36 @@ def main():
     batch_size = 32
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
+    # Define split ratio
+    train_ratio = 0.8  # 80% training, 20% testing
+    split_index = int(len(x_data) * train_ratio)  # Compute split index
+
+    # Shuffle data (important for training)
+    indices = np.random.permutation(len(x_data))
+    x_data_split, y_onehot = x_data[indices], y_onehot[indices]  # Shuffle both inputs and labels
+
+    # Split data
+    x_train, x_test = x_data_split[:split_index], x_data_split[split_index:]
+    y_train, y_test = y_onehot[:split_index], y_onehot[split_index:]
+
+    train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    train_dataset = train_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+
+    test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    test_dataset = test_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+
     # Create and train model
     model = tf.keras.models.Sequential([
+        # tf.keras.layers.Dense(2, input_shape=(n_node,), activation='softmax'),
         tf.keras.layers.Dense(64, input_shape=(n_node,), activation='relu'),
         tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(2, activation='softmax')
     ])
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-    history = model.fit(dataset, epochs=10000, verbose=1)
+    history = model.fit(train_dataset, epochs=5000, verbose=1)
+    test_loss, test_accuracy = model.evaluate(test_dataset)
+    print(f"Test accuracy: {test_accuracy}")
 
     # Predict and plot
     predictions = model.predict(x_data)
@@ -77,12 +98,11 @@ def main():
 
     plt.figure()
     plot_time = time[500:1000]
-    #plt.plot(time[n_node - 1:], envelope[n_node - 1:], label='Envelope')
-    parity = np.repeat(parity,10)
-    predictions = predictions*2 - 1
-    predictions = np.repeat(predictions,10)
-    plt.plot(plot_time,parity[500:1000], label='Parity')
-    plt.plot(plot_time,predictions[500:1000], label='Predictions', linestyle='--')
+    parity = np.repeat(parity, 10)
+    predictions = predictions * 2 - 1
+    predictions = np.repeat(predictions, 10)
+    plt.plot(plot_time, parity[500:1000], label='Parity')
+    plt.plot(plot_time, predictions[500:1000], label='Predictions', linestyle='--')
     plt.legend()
     plt.show()
 

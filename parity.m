@@ -11,7 +11,8 @@ d0 = 5e-8;                    % Distance for coupling (m)
 VDC = 2;                      % DC voltage (V)
 VAC1 = 0.0001;                % AC voltage 1 (V)
 VAC2 = 0.0005;                % AC voltage 2 (V)
-m = 1;                        % Effective mass
+m = 4.61356e-17;                        % Effective mass
+mass = 4.61356e-17;
 f0 = 117.0818e6;
 omega0 = (2 * pi) * f0;        % Natural frequency in rad/s
 f1 = 117.0818e6;
@@ -21,7 +22,7 @@ Q = 330;                % Quality factor
 % Time settings
 t_min = 0;                    % Start time (s)
 t_max = 5e-4;                % End time (s)
-dt = 1e-9;                    % Time step (s)
+dt = 1e-9;                     % Time step (s)
 time = t_min:dt:t_max;        % Time array
 
 % Initial conditions
@@ -58,17 +59,17 @@ step_function = @(t) interp1(step_time, step_val, t, 'previous', 'extrap');
 
 %% Elec force
 
-% External force on resonator 1
+%F_elec1 = @(t,y) step_function(t) + 0.5 * (epsilon_0*A*(VDC+VAC1)^2/(g0-y(1))^2)*sin(omega0 * t);  % External force on resonator 1
 F_elec1 = @(t,y) (epsilon_0*A*(step_function(t)+VDC+VAC1*sin(omega0 * t))^2/(g0-y(1))^2);
 F_elec2 = @(t,y) 0;  % External force on resonator 2
 
 
 dydt = @(t, y) [
         y(2);
-        F_elec1(t,y)/m - (omega0 * y(2) / Q) - (omega0^2)/m * y(1) ...
+        F_elec1(t,y)/m - (omega0 * y(2) / Q) - (omega0^2) * y(1) ...
         - (kc / m) * (y(1) - y(3)) ; % Resonator 1
         y(4);
-        F_elec2(t,y)/m - (omega0 * y(4) / Q) - (omega0^2)/m * y(3) ...
+        F_elec2(t,y)/m - (omega0 * y(4) / Q) - (omega0^2) * y(3) ...
         - (kc / m) * (y(3) - y(1))  % Resonator 2
     ];
 
@@ -98,25 +99,28 @@ end
 
 %% Plot the results
 
+
 figure;
+
+% Define the number of samples to plot
+num_samples = min(10000, length(time)); % Ensure we don't exceed available data
+
 subplot(2,1,1);
-plot(time, v1, 'b-', 'LineWidth', 2);
+plot(time(1:num_samples), v1(1:num_samples), 'b-', 'LineWidth', 2);
 hold on;
-plot(time, v2, 'r-', 'LineWidth', 1);
-%hold on;
-%stairs(step_time, step_val, 'LineWidth', 1.5);
+plot(time(1:num_samples), v2(1:num_samples), 'r-', 'LineWidth', 1);
 hold off;
 
 % Add labels and legend
 xlabel('Time (s)', 'FontSize', 12);
 ylabel('Displacement (m)', 'FontSize', 12);
 title('Time-Domain Response of Coupled NEMS Resonators', 'FontSize', 14);
-legend('z_1(t)', '_2(t)', 'Location', 'best');
+legend('z_1(t)', 'z_2(t)', 'Location', 'best'); % Fixed legend typo
 grid on;
 
-
 subplot(2,1,2);
-stairs(step_time, step_val, 'LineWidth', 1.5);
+num_step_samples = min(50, length(step_time)); % Limit step function samples too
+stairs(step_time(1:num_step_samples), step_val(1:num_step_samples), 'LineWidth', 1.5);
 xlabel('Time (s)');
 ylabel('Step Value');
 title('Step Function');

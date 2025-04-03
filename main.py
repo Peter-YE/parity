@@ -1,11 +1,11 @@
 import numpy as np
 import utility
-
+import reservoir
 
 def main():
     print("Running...")
 
-    step_time, step_val, time, z1 = utility.load_data()
+    step_time, step_val, time, z1 = reservoir.reservoir()
 
     # Calculate parity at each step
     n = 2  # Parity order

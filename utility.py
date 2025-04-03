@@ -84,6 +84,7 @@ def plot_data(time, parity, predictions):
 def train_model(train_dataset, test_dataset, n_node):
     # Create and train model
     model = tf.keras.models.Sequential([
+        # tf.keras.layers.Dense(2, input_shape=(n_node,), activation='softmax'),
         tf.keras.layers.Dense(64, input_shape=(n_node,), activation='relu'),
         tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(2, activation='softmax')

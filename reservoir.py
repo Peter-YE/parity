@@ -18,8 +18,8 @@ m = 4.61356e-17  # Effective mass
 mass = 4.61356e-17
 f0 = 117.0818e6
 omega0 = 2 * np.pi * f0  # Natural frequency in rad/s
-f1 = 117.0818e6
-omega = 2 * np.pi * f1
+# f1 = 117.0818e6
+# omega = 2 * np.pi * f1
 Q = 330  # Quality factor
 
 # Time settings

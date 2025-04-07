@@ -21,6 +21,7 @@ omega0 = 2 * np.pi * f0  # Natural frequency in rad/s
 # f1 = 117.0818e6
 # omega = 2 * np.pi * f1
 Q = 330  # Quality factor
+alpha = 0.5
 
 # Time settings
 t_min = 0                    # Start time (s)
@@ -50,9 +51,17 @@ kc = -((epsilon_0 * A) / d0 ** 3) * (VAC2 - VAC1) ** 2
 # Step input
 steps = 5000
 tau = (t_max - t_min) / steps
-step_val = 2 * np.random.randint(0, 2, steps + 1) - 1
-step_time = np.linspace(t_min, t_max, steps + 1)
+N = 400 # Size of mask
+theta = tau / N # Duration of each mask
+mask = 0.45 + (np.random.rand(N)) * (0.75-0.45) # Random mask values
+mask = np.tile(mask, steps)
+mask_time = np.linspace(t_min, t_max, steps*N)
+feedback = np.zeros(N)
+step_val = 2 * np.random.randint(0, 2, steps) - 1
+step_time = np.linspace(t_min, t_max, steps)
 
+def mask_function(t):
+    return np.interp(t, mask_time, mask, left=mask[0], right=mask[-1])
 
 def step_function(t):
     return np.interp(t, step_time, step_val, left=step_val[0], right=step_val[-1])
@@ -60,7 +69,7 @@ def step_function(t):
 
 # Electric force functions
 def F_elec1(t, y):
-    return (epsilon_0 * A * (step_function(t) + VDC + VAC1 * np.sin(omega0 * t)) ** 2 /
+    return (epsilon_0 * A * (step_function(t) * mask_function(t) + VDC + VAC1 * np.sin(omega0 * t)) ** 2 /
             (g0 - y[0]) ** 2)
 
 

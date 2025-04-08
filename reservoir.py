@@ -24,22 +24,23 @@ Q = 330  # Quality factor
 alpha = 0.5
 
 # Time settings
-t_min = 0                    # Start time (s)
-t_max = 5e-4                 # End time (s)
-dt = 1e-9                    # Time step (s)
+t_min = 0  # Start time (s)
+t_max = 5e-4  # End time (s)
+dt = 1e-9  # Time step (s)
 time = np.arange(t_min, t_max + dt, dt)
+samples = len(time)
 
 # Initial conditions
-z1_0 = 0                     # Initial displacement of resonator 1
-v1_0 = 0                     # Initial velocity of resonator 1
-z2_0 = 0                     # Initial displacement of resonator 2
-v2_0 = 0                     # Initial velocity of resonator 2
+z1_0 = 0  # Initial displacement of resonator 1
+v1_0 = 0  # Initial velocity of resonator 1
+z2_0 = 0  # Initial displacement of resonator 2
+v2_0 = 0  # Initial velocity of resonator 2
 
 # Preallocate results
-z1 = np.zeros(len(time))
-z2 = np.zeros(len(time))
-v1 = np.zeros(len(time))
-v2 = np.zeros(len(time))
+z1 = np.zeros(samples)
+z2 = np.zeros(samples)
+v1 = np.zeros(samples)
+v2 = np.zeros(samples)
 
 # Initial values
 z1[0] = z1_0
@@ -51,25 +52,34 @@ kc = -((epsilon_0 * A) / d0 ** 3) * (VAC2 - VAC1) ** 2
 # Step input
 steps = 5000
 tau = (t_max - t_min) / steps
-N = 400 # Size of mask
-theta = tau / N # Duration of each mask
-mask = 0.45 + (np.random.rand(N)) * (0.75-0.45) # Random mask values
+N = 400  # Size of mask
+theta = tau / N  # Duration of each mask
+mask = 0.45 + (np.random.rand(N)) * (0.75 - 0.45)  # Random mask values
 mask = np.tile(mask, steps)
-mask_time = np.linspace(t_min, t_max, steps*N)
+mask_time = np.linspace(t_min, t_max, steps * N)
 feedback = np.zeros(N)
 step_val = 2 * np.random.randint(0, 2, steps) - 1
 step_time = np.linspace(t_min, t_max, steps)
 
+
 def mask_function(t):
     return np.interp(t, mask_time, mask, left=mask[0], right=mask[-1])
+
 
 def step_function(t):
     return np.interp(t, step_time, step_val, left=step_val[0], right=step_val[-1])
 
 
+def feedback(t):
+    if t < t_min + tau:
+        return 0
+    else:
+        return np.interp(t - tau, time, v1, left=v1[0], right=v1[-1])
+
+
 # Electric force functions
 def F_elec1(t, y):
-    return (epsilon_0 * A * (step_function(t) * mask_function(t) + VDC + VAC1 * np.sin(omega0 * t)) ** 2 /
+    return (epsilon_0 * A * (step_function(t) + VDC + feedback(t) + mask_function(t) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (g0 - y[0]) ** 2)
 
 
@@ -86,9 +96,10 @@ def dydt(t, y):
         F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0])
     ])
 
+
 def reservoir():
-        # Runge-Kutta integration
-    for i in range(len(time) - 1):
+    # Runge-Kutta integration
+    for i in range(samples - 1):
         t = time[i]
         y = np.array([z1[i], v1[i], z2[i], v2[i]])
 
@@ -111,12 +122,12 @@ def reservoir():
     plt.figure(figsize=(10, 8))
 
     # Define number of samples to plot
-    num_samples = min(4900, len(time))
+    num_samples = min(5000, samples)
 
     # First subplot
     plt.subplot(2, 1, 1)
-    plt.plot(time[:num_samples], v1[:num_samples], 'b-', linewidth=2, label='z_1(t)')
-    plt.plot(time[:num_samples], v2[:num_samples], 'r-', linewidth=1, label='z_2(t)')
+    plt.plot(time[:num_samples], v1[:num_samples], 'b-', linewidth=2, label='v_1(t)')
+    plt.plot(time[:num_samples], v2[:num_samples], 'r-', linewidth=1, label='v_2(t)')
     plt.xlabel('Time (s)', fontsize=12)
     plt.ylabel('Displacement (m)', fontsize=12)
     plt.title('Time-Domain Response of Coupled NEMS Resonators', fontsize=14)
@@ -125,7 +136,7 @@ def reservoir():
 
     # Second subplot
     plt.subplot(2, 1, 2)
-    num_step_samples = min(50, len(step_time))
+    num_step_samples = int((t_min + num_samples * dt) // tau) + 1
     plt.step(step_time[:num_step_samples], step_val[:num_step_samples],
              where='post', linewidth=1.5)
     plt.xlabel('Time (s)')

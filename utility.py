@@ -14,15 +14,13 @@ def envelope_extraction(signal, n_node, n_step):
     return envelope
 
 
-def parity_benchmark(step_val, n):
-    """Calculate the parity of the input signal at each step."""
-    parity = np.ones(step_val.size)
-    for p in range(parity.size):
-        if p >= n - 1:  # Ensure we have enough history to calculate parity
-            parity[p] = np.prod(step_val[p - n + 1:p + 1])
-        else:
-            parity[p] = 0  # Parity is undefined for the first n-1 steps
+def parity_benchmark(step_val: np.ndarray, n: int) -> np.ndarray:
+    """Calculate parity of the input signal with rolling window."""
+    parity = np.zeros(step_val.size)
+    rolling_window = np.lib.stride_tricks.sliding_window_view(step_val, n)
+    parity[n - 1:] = rolling_window.prod(axis=1)
     return parity
+
 
 
 def load_data():
@@ -36,18 +34,12 @@ def load_data():
     return step_time, step_val, time, z1
 
 
-def create_dataset(n_node, n_step, envelope, parity):
-    x_data = np.zeros((n_step, n_node))
-    y_data = np.zeros(n_step)
+def create_dataset(n_node: int, n_step: int, envelope: np.ndarray, parity: np.ndarray):
+    """Create features (x_data) and labels (y_data) for the model."""
+    x_data = envelope.reshape(n_step, n_node)
+    y_data = tf.keras.utils.to_categorical((parity + 1) // 2, num_classes=2)
+    return x_data, y_data
 
-    for i in range(n_step):
-        x_data[i] = envelope[i * n_node:i * n_node + n_node]  # Use a window of n_node values
-        y_data[i] = parity[i]  # Use parity at the current step
-    y_data = (y_data + 1) / 2
-    # Convert y_data to one-hot encoding
-    y_onehot = tf.keras.utils.to_categorical(y_data, num_classes=2)
-
-    return x_data, y_onehot
 
 
 def split_dataset(x_data, y_data, train_ratio, batch_size):

@@ -14,7 +14,7 @@ d0 = 5e-8  # Distance for coupling (m)
 VDC = 1  # DC voltage (V)
 VAC1 = 0.0001  # AC voltage 1 (V)
 VAC2 = 0.0005  # AC voltage 2 (V)
-m = 0.735*4.61356e-17  # Effective mass
+m = 0.735 * 4.61356e-17  # Effective mass
 mass = 4.61356e-17
 f0 = 117.0818e6
 omega0 = 2 * np.pi * f0  # Natural frequency in rad/s
@@ -80,8 +80,10 @@ def feedback(t):
 
 # Electric force functions
 def F_elec1(t, y):
-    return (epsilon_0 * A * (step_function(t) + feedback(t) + mask_function(t)  + VAC1) ** 2 * np.sin(omega0 * t) /
+    return (epsilon_0 * A * ((step_function(t) + feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2))
+    # return (epsilon_0 * A * (VDC+(step_function(t) + feedback(t) + mask_function(t))*np.sin(omega0 * t)) ** 2 /
+    #         (2 * (g0 - y[0]) ** 2))
 
 
 def F_elec2(t, y):

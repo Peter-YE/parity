@@ -9,9 +9,14 @@ def main():
 
     # Calculate parity at each step
     n = 2  # Parity order
-    parity = utility.parity_benchmark(step_val, n)
     n_node = 50  # Number of past steps to use as input features
+    # Define split ratio
+    train_ratio = 0.8  # 80% training, 20% testing
+    batch_size = 32
+
+    parity = utility.parity_benchmark(step_val, n)
     n_step = len(parity)  # Number of samples after creating windows
+
 
     # Extract envelope
     envelope = utility.envelope_extraction(z1, n_node, n_step)
@@ -19,10 +24,6 @@ def main():
 
     x_data, y_data = utility.create_dataset(n_node, n_step, envelope, parity)
     # Create TensorFlow dataset
-
-    # Define split ratio
-    train_ratio = 0.8  # 80% training, 20% testing
-    batch_size = 32
 
     train_dataset, test_dataset = utility.split_dataset(x_data, y_data, train_ratio, batch_size)
 

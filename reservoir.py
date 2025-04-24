@@ -62,6 +62,16 @@ feedback = np.zeros(N)
 step_val = 2 * np.random.randint(0, 2, steps) - 1
 step_time = np.linspace(t_min, t_max, steps)
 
+class Probe:
+    def __init__(self):
+        self.sum = 0
+        self.num = 0
+
+    def sample_force(self, F_elec):
+        self.sum += abs(F_elec)
+        self.num += 1
+    def average_force(self):
+        return self.sum / self.num
 
 def mask_function(t):
     return np.interp(t, mask_time, mask, left=mask[0], right=mask[-1])
@@ -80,7 +90,7 @@ def feedback(t):
 
 # Electric force functions
 def F_elec1(t, y):
-    return (epsilon_0 * A * ((step_function(t) + feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    return (epsilon_0 * A * ((VDC + step_function(t) + feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2))
     # return (epsilon_0 * A * (VDC+(step_function(t) + feedback(t) + mask_function(t))*np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))
@@ -101,11 +111,12 @@ def dydt(t, y):
 
 
 def reservoir():
+    probe = Probe()
     # Runge-Kutta integration
     for i in range(samples - 1):
         t = time[i]
         y = np.array([z1[i], v1[i], z2[i], v2[i]])
-
+        probe.sample_force(F_elec1(t, y))
         # Runge-Kutta steps
         k1 = dydt(t, y)
         k2 = dydt(t + dt / 2, y + dt * k1 / 2)
@@ -149,4 +160,5 @@ def reservoir():
 
     plt.tight_layout()
     plt.show()
+    print("Average Electric Force:", probe.average_force())
     return step_time, step_val, time, v1

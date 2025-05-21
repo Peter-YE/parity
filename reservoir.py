@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import matplotlib as mpl
 
 # Parameters
 # Define constants
@@ -29,6 +31,7 @@ t_min = 0  # Start time (s)
 t_max = 5e-4  # End time (s)
 dt = 1e-9  # Time step (s)
 time = np.arange(t_min, t_max + dt, dt)
+time = time[1:]  # Remove the first element to match the size of other arrays
 samples = len(time)
 
 # Initial conditions
@@ -48,7 +51,8 @@ z1[0] = z1_0
 z2[0] = z2_0
 v1[0] = v1_0
 v2[0] = v2_0
-kc = -((epsilon_0 * A) / d0 ** 3) * (VAC2 - VAC1) ** 2
+kc = -((epsilon_0 * A) / (d0 ** 3)) * ((VAC2 - VAC1) ** 2)
+# kc=1
 
 # Step input
 steps = 1000
@@ -58,20 +62,18 @@ theta = tau / N  # Duration of each mask
 mask = 0.45 + (np.random.rand(N)) * (0.75 - 0.45)  # Random mask values
 mask = np.tile(mask, steps)
 mask_time = np.linspace(t_min, t_max, steps * N)
-feedback = np.zeros(N)
 step_val = 2 * np.random.randint(0, 2, steps) - 1
+# step_val = np.zeros(steps)
+# for i in range(steps):
+#     if i % 2 == 0:
+#         step_val[i] = 1
+#     else:
+#         step_val[i] = -1
 step_time = np.linspace(t_min, t_max, steps)
+step_val_real = np.repeat(step_val, samples//steps)
+print("time size", np.size(time))
+print("step size", np.size(step_val_real))
 
-class Probe:
-    def __init__(self):
-        self.sum = 0
-        self.num = 0
-
-    def sample_force(self, F_elec):
-        self.sum += abs(F_elec)
-        self.num += 1
-    def average_force(self):
-        return self.sum / self.num
 
 def mask_function(t):
     return np.interp(t, mask_time, mask, left=mask[0], right=mask[-1])
@@ -90,33 +92,38 @@ def feedback(t):
 
 # Electric force functions
 def F_elec1(t, y):
-    return (epsilon_0 * A * ((VDC + step_function(t) + feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    return (epsilon_0 * A * (( step_function(t)+ feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2))
     # return (epsilon_0 * A * (VDC+(step_function(t) + feedback(t) + mask_function(t))*np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))
 
 
 def F_elec2(t, y):
-    return 0
+    if t > tau:
+        return (epsilon_0 * A * (( step_function(t-tau)+ mask_function(t-tau)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+            (2 * (g0 - y[0]) ** 2))
+    else:
+        return (epsilon_0 * A * (( step_function(t)+ mask_function(t)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+            (2 * (g0 - y[0]) ** 2))
 
 
 # Differential equations
 def dydt(t, y):
     return np.array([
         y[1],
-        F_elec1(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0**2 * beta * y[0]**3,
+        F_elec1(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0 ** 2 * beta * y[0] ** 3,
         y[3],
-        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0**2 * beta * y[2]**3
+        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta * y[2] ** 3
     ])
 
 
 def reservoir():
-    probe = Probe()
+    print('kc=',kc)
     # Runge-Kutta integration
     for i in range(samples - 1):
         t = time[i]
         y = np.array([z1[i], v1[i], z2[i], v2[i]])
-        probe.sample_force(F_elec1(t, y))
+
         # Runge-Kutta steps
         k1 = dydt(t, y)
         k2 = dydt(t + dt / 2, y + dt * k1 / 2)
@@ -138,27 +145,49 @@ def reservoir():
     # Define number of samples to plot
     num_samples = min(5000, samples)
 
+    mpl.rcParams['font.family'] = 'Times New Roman'
+
+
     # First subplot
-    plt.subplot(2, 1, 1)
-    plt.plot(time[:num_samples], z1[:num_samples], 'b-', linewidth=2, label='v_1(t)')
-    plt.plot(time[:num_samples], z2[:num_samples], 'r-', linewidth=1, label='v_2(t)')
-    plt.xlabel('Time (s)', fontsize=12)
-    plt.ylabel('Displacement (m)', fontsize=12)
-    plt.title('Time-Domain Response of Coupled NEMS Resonators', fontsize=14)
-    plt.legend(loc='best')
-    plt.grid(True)
+    plt.subplot(2, 1, 2)
+    plt.plot(time[7010:10010], v1[7010:10010], linewidth=2, label='v₁(t)')
+    plt.xlabel('Time (s)', fontsize=28)
+    plt.ylabel('Displacement\nVelocity (m/s)', fontsize=28)  # Changed from Velocity (m/s)
+    plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
+    plt.tick_params(axis='both', labelsize=28)
+
+    ax1 = plt.gca()
+    ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    ax1.xaxis.offsetText.set_fontsize(28)
+    ax1.yaxis.offsetText.set_fontsize(28)
+    #plt.grid(True)
 
     # Second subplot
-    plt.subplot(2, 1, 2)
-    num_step_samples = int((t_min + num_samples * dt) // tau) + 1
-    plt.step(step_time[:num_step_samples], step_val[:num_step_samples],
+    plt.subplot(2, 1, 1)
+    num_step_samples_min = int((t_min + 7000 * dt) // tau)
+    num_step_samples_max = int((t_min + 10000 * dt) // tau) + 1
+    # num_min = int(num_step_samples_min*N)
+    # num_max = int(num_step_samples_max*N)
+    # plot mask
+    # mask_time = np.linspace(t_min, t_max, num_step_samples_max * N)
+    # plt.step(mask_time[num_min:num_max],mask[num_min:num_max])
+    plt.step(step_time[num_step_samples_min:num_step_samples_max],
+             step_val[num_step_samples_min:num_step_samples_max],
              where='post', linewidth=1.5)
-    plt.xlabel('Time (s)')
-    plt.ylabel('Step Value')
-    plt.title('Step Function')
-    plt.grid(True)
+
+    plt.xlabel('Time (s)', fontsize=28)
+    plt.ylabel('Step Value', fontsize=28)
+    plt.title('Step Input Function', fontsize=29)
+    plt.tick_params(axis='both', labelsize=28)
+
+    ax2 = plt.gca()
+    ax2.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax2.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    ax2.xaxis.offsetText.set_fontsize(28)
+    ax2.yaxis.offsetText.set_fontsize(28)
+    #plt.grid(True)
 
     plt.tight_layout()
     plt.show()
-    print("Average Electric Force:", probe.average_force())
     return step_time, step_val, time, v1

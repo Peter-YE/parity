@@ -3,6 +3,9 @@ import utility
 import reservoir
 import matplotlib.pyplot as plt
 
+from utility import ridge_regression
+
+
 def main():
     print("Running...")
 
@@ -10,7 +13,7 @@ def main():
     plt.figure()
     for n in range(2,5):
         # Calculate parity at each step
-        n_node = 50  # Number of past steps to use as input features
+        n_node = 50  # Number of samples to use as input features
         # Define split ratio
         train_ratio = 0.8  # 80% training, 20% testing
         batch_size = 32
@@ -24,6 +27,8 @@ def main():
         # Create dataset with n_node
 
         x_data, y_data = utility.create_dataset(n_node, n_step, envelope, parity)
+        x_train, x_test, y_train, y_test = utility.split_dataset_ridge(x_data, y_data, train_ratio)
+        utility.ridge_regression(x_train, y_train, x_test, y_test)
         # Create TensorFlow dataset
 
         train_dataset, test_dataset = utility.split_dataset(x_data, y_data, train_ratio, batch_size)

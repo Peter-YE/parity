@@ -1,6 +1,10 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from keras.src.metrics.accuracy_metrics import accuracy
 from scipy.signal import hilbert
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 
 
@@ -40,7 +44,18 @@ def create_dataset(n_node: int, n_step: int, envelope: np.ndarray, parity: np.nd
     y_data = tf.keras.utils.to_categorical((parity + 1) // 2, num_classes=2)
     return x_data, y_data
 
+def split_dataset_ridge(x_data, y_data, train_ratio):
+    split_index = int(len(x_data) * train_ratio)  # Compute split index
 
+    # Shuffle data (important for training)
+    indices = np.random.permutation(len(x_data))
+    x_data, y_data = x_data[indices], y_data[indices]  # Shuffle both inputs and labels
+
+    # Split data
+    x_train, x_test = x_data[:split_index], x_data[split_index:]
+    y_train, y_test = y_data[:split_index], y_data[split_index:]
+
+    return x_train, y_train, x_test, y_test
 
 def split_dataset(x_data, y_data, train_ratio, batch_size):
     split_index = int(len(x_data) * train_ratio)  # Compute split index
@@ -88,3 +103,15 @@ def train_model(train_dataset, test_dataset, n_node):
     print(f"Test accuracy: {test_accuracy}")
 
     return model
+
+def ridge_regression(x_train, y_train, x_test, y_test):
+    print("x_train shape:", x_train.shape)
+    print("y_train shape:", y_train.shape)
+    w = y_train @ np.linalg.pinv(x_train)
+    print("w shape:", w.shape)
+    y_pred = w @ x_test
+    y_pred = np.argmax(y_pred, axis=1)
+    y_test = np.argmax(y_test, axis=1)
+    accuracy = np.mean(y_pred == y_test)
+    print(f"Test accuracy: {accuracy}")
+    return 0

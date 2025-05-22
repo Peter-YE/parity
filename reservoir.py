@@ -29,7 +29,7 @@ beta = 1.54e-4  # Constant for the cubic nonlinearity
 # Time settings
 t_min = 0  # Start time (s)
 t_max = 5e-4  # End time (s)
-dt = 1e-9  # Time step (s)
+dt = 1e-9  # Time step (s) i.e. sampling rate
 time = np.arange(t_min, t_max + dt, dt)
 time = time[1:]  # Remove the first element to match the size of other arrays
 samples = len(time)
@@ -80,14 +80,18 @@ def mask_function(t):
 
 
 def step_function(t):
-    return np.interp(t, step_time, step_val, left=step_val[0], right=step_val[-1])
+    index = int((t-t_min) // dt)
+    return step_val_real[index]
+    # return np.interp(t, time, step_val, left=step_val[0], right=step_val[-1])
 
 
 def feedback(t):
     if t < t_min + tau:
         return 0
     else:
-        return alpha * np.interp(t - tau, time, v1, left=v1[0], right=v1[-1])
+        index = int((t - tau-t_min) // dt)
+        return v1[index]
+        # return alpha * np.interp(t - tau, time, v1, left=v1[0], right=v1[-1])
 
 
 # Electric force functions

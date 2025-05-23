@@ -1,10 +1,6 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from keras.src.metrics.accuracy_metrics import accuracy
 from scipy.signal import hilbert
-from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
 import numpy as np
 
 
@@ -23,6 +19,7 @@ def parity_benchmark(step_val: np.ndarray, n: int) -> np.ndarray:
     parity = np.zeros(step_val.size)
     rolling_window = np.lib.stride_tricks.sliding_window_view(step_val, n)
     parity[n - 1:] = rolling_window.prod(axis=1)
+
     return parity
 
 
@@ -38,7 +35,6 @@ def load_data():
 
 
 def create_dataset(n_node: int, n_step: int, envelope: np.ndarray, parity: np.ndarray):
-    """Create features (x_data) and labels (y_data) for the model."""
     x_data = envelope.reshape(n_step, n_node)
     y_data = tf.keras.utils.to_categorical((parity + 1) // 2, num_classes=2)
     return x_data, y_data
@@ -93,7 +89,8 @@ def train_model(train_dataset, test_dataset, n_node):
     # Create and train model
     model = tf.keras.models.Sequential([
         # tf.keras.layers.Dense(2, input_shape=(n_node,), activation='softmax'),
-        tf.keras.layers.Dense(64, input_shape=(n_node,), activation='relu'),
+        tf.keras.Input(shape=(n_node,)),
+        tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(2, activation='softmax')
     ])
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
@@ -106,10 +103,9 @@ def train_model(train_dataset, test_dataset, n_node):
 
 
 def ridge_regression(x_train, y_train, x_test, y_test):
-    w = y_train @ np.linalg.pinv(x_train)
-    y_pred = w @ x_test
+    w = np.linalg.pinv(x_train) @ y_train
+    y_pred = x_test @ w
     y_pred = np.argmax(y_pred, axis=1)
     y_test = np.argmax(y_test, axis=1)
     accuracy = np.mean(y_pred == y_test)
     print(f"Regression accuracy: {accuracy}")
-    return 0

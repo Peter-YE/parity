@@ -26,7 +26,6 @@ def parity_benchmark(step_val: np.ndarray, n: int) -> np.ndarray:
     return parity
 
 
-
 def load_data():
     # Load data
     step_time = np.loadtxt("step_time.csv", delimiter=",")
@@ -44,6 +43,7 @@ def create_dataset(n_node: int, n_step: int, envelope: np.ndarray, parity: np.nd
     y_data = tf.keras.utils.to_categorical((parity + 1) // 2, num_classes=2)
     return x_data, y_data
 
+
 def split_dataset_ridge(x_data, y_data, train_ratio):
     split_index = int(len(x_data) * train_ratio)  # Compute split index
 
@@ -56,6 +56,7 @@ def split_dataset_ridge(x_data, y_data, train_ratio):
     y_train, y_test = y_data[:split_index], y_data[split_index:]
 
     return x_train, y_train, x_test, y_test
+
 
 def split_dataset(x_data, y_data, train_ratio, batch_size):
     split_index = int(len(x_data) * train_ratio)  # Compute split index
@@ -93,25 +94,22 @@ def train_model(train_dataset, test_dataset, n_node):
     model = tf.keras.models.Sequential([
         # tf.keras.layers.Dense(2, input_shape=(n_node,), activation='softmax'),
         tf.keras.layers.Dense(64, input_shape=(n_node,), activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(2, activation='softmax')
     ])
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-    model.fit(train_dataset, epochs=2000, verbose=1)
+    model.fit(train_dataset, epochs=2000, verbose=0)
     test_loss, test_accuracy = model.evaluate(test_dataset)
-    print(f"Test accuracy: {test_accuracy}")
+    print(f"NN accuracy: {test_accuracy}")
 
     return model
 
+
 def ridge_regression(x_train, y_train, x_test, y_test):
-    print("x_train shape:", x_train.shape)
-    print("y_train shape:", y_train.shape)
     w = y_train @ np.linalg.pinv(x_train)
-    print("w shape:", w.shape)
     y_pred = w @ x_test
     y_pred = np.argmax(y_pred, axis=1)
     y_test = np.argmax(y_test, axis=1)
     accuracy = np.mean(y_pred == y_test)
-    print(f"Test accuracy: {accuracy}")
+    print(f"Regression accuracy: {accuracy}")
     return 0

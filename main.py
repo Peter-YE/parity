@@ -3,15 +3,13 @@ import utility
 import reservoir
 import matplotlib.pyplot as plt
 
-from utility import ridge_regression
-
 
 def main():
     print("Running...")
 
     step_time, step_val, time, z1 = reservoir.reservoir()
     plt.figure()
-    for n in range(2,5):
+    for n in range(2, 5):
         # Calculate parity at each step
         n_node = 50  # Number of samples to use as input features
         # Define split ratio
@@ -20,7 +18,6 @@ def main():
 
         parity = utility.parity_benchmark(step_val, n)
         n_step = len(parity)  # Number of samples after creating windows
-
 
         # Extract envelope
         envelope = utility.envelope_extraction(z1, n_node, n_step)
@@ -38,7 +35,7 @@ def main():
         # Predict and plot
         predictions = model.predict(x_data)
         # predictions = np.argmax(predictions, axis=1)  # Convert one-hot to class labels
-        predictions = predictions[:,1]
+        predictions = predictions[:, 1]
         # convert y_data from one-hot to class labels
         y_data = np.argmax(y_data, axis=1)
 

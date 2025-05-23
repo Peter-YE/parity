@@ -20,8 +20,6 @@ m = 0.735 * 4.61356e-17  # Effective mass
 mass = 4.61356e-17
 f0 = 117.0818e6
 omega0 = 2 * np.pi * f0  # Natural frequency in rad/s
-# f1 = 117.0818e6
-# omega = 2 * np.pi * f1
 Q = 330  # Quality factor
 alpha = 0.5
 beta = 1.54e-4  # Constant for the cubic nonlinearity
@@ -32,7 +30,7 @@ t_max = 5e-4  # End time (s)
 dt = 1e-9  # Time step (s) i.e. sampling rate
 time = np.arange(t_min, t_max + dt, dt)
 time = time[1:]  # Remove the first element to match the size of other arrays
-samples = len(time)
+n_samples = len(time)
 
 # Initial conditions
 z1_0 = 0  # Initial displacement of resonator 1
@@ -41,10 +39,10 @@ z2_0 = 0  # Initial displacement of resonator 2
 v2_0 = 0  # Initial velocity of resonator 2
 
 # Preallocate results
-z1 = np.zeros(samples)
-z2 = np.zeros(samples)
-v1 = np.zeros(samples)
-v2 = np.zeros(samples)
+z1 = np.zeros(n_samples)
+z2 = np.zeros(n_samples)
+v1 = np.zeros(n_samples)
+v2 = np.zeros(n_samples)
 
 # Initial values
 z1[0] = z1_0
@@ -57,11 +55,12 @@ kc = -((epsilon_0 * A) / (d0 ** 3)) * ((VAC2 - VAC1) ** 2)
 # Step input
 steps = 1000
 tau = (t_max - t_min) / steps
-N = 400  # Size of mask
+N = 100  # Size of mask
 theta = tau / N  # Duration of each mask
 mask = 0.45 + (np.random.rand(N)) * (0.75 - 0.45)  # Random mask values
 mask = np.tile(mask, steps)
 mask_time = np.linspace(t_min, t_max, steps * N)
+print("mask size", np.size(mask))
 step_val = 2 * np.random.randint(0, 2, steps) - 1
 # step_val = np.zeros(steps)
 # for i in range(steps):
@@ -70,33 +69,36 @@ step_val = 2 * np.random.randint(0, 2, steps) - 1
 #     else:
 #         step_val[i] = -1
 step_time = np.linspace(t_min, t_max, steps)
-step_val_real = np.repeat(step_val, samples//steps)
+step_val_real = np.repeat(step_val, n_samples // steps)
+mask_real = np.repeat(mask, n_samples // (N * steps))
 print("time size", np.size(time))
 print("step size", np.size(step_val_real))
 
 
 def mask_function(t):
-    return np.interp(t, mask_time, mask, left=mask[0], right=mask[-1])
+    if t < t_min + tau:
+        return mask_real[0]
+    else:
+        index = int((t - t_min) // dt)
+        return mask_real[index]
 
 
 def step_function(t):
-    index = int((t-t_min) // dt)
+    index = int((t - t_min) // dt)
     return step_val_real[index]
-    # return np.interp(t, time, step_val, left=step_val[0], right=step_val[-1])
 
 
 def feedback(t):
     if t < t_min + tau:
-        return 0
+        return v1[0]
     else:
-        index = int((t - tau-t_min) // dt)
+        index = int((t - tau - t_min) // dt)
         return v1[index]
-        # return alpha * np.interp(t - tau, time, v1, left=v1[0], right=v1[-1])
 
 
 # Electric force functions
 def F_elec1(t, y):
-    return (epsilon_0 * A * (( step_function(t)+ feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    return (epsilon_0 * A * ((step_function(t) + feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2))
     # return (epsilon_0 * A * (VDC+(step_function(t) + feedback(t) + mask_function(t))*np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))
@@ -104,27 +106,29 @@ def F_elec1(t, y):
 
 def F_elec2(t, y):
     if t > tau:
-        return (epsilon_0 * A * (( step_function(t-tau)+ mask_function(t-tau)) + VAC2 * np.sin(omega0 * t)) ** 2 /
-            (2 * (g0 - y[0]) ** 2))
+        return (epsilon_0 * A * ((step_function(t - tau) + mask_function(t - tau)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+                (2 * (g0 - y[0]) ** 2))
     else:
-        return (epsilon_0 * A * (( step_function(t)+ mask_function(t)) + VAC2 * np.sin(omega0 * t)) ** 2 /
-            (2 * (g0 - y[0]) ** 2))
+        return (epsilon_0 * A * ((step_function(t) + mask_function(t)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+                (2 * (g0 - y[0]) ** 2))
 
 
 # Differential equations
 def dydt(t, y):
     return np.array([
         y[1],
-        F_elec1(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0 ** 2 * beta * y[0] ** 3,
+        F_elec1(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0 ** 2 * beta *
+        y[0] ** 3,
         y[3],
-        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta * y[2] ** 3
+        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta *
+        y[2] ** 3
     ])
 
 
 def reservoir():
-    print('kc=',kc)
+    print('kc=', kc)
     # Runge-Kutta integration
-    for i in range(samples - 1):
+    for i in range(n_samples - 1):
         t = time[i]
         y = np.array([z1[i], v1[i], z2[i], v2[i]])
 
@@ -147,10 +151,9 @@ def reservoir():
     plt.figure(figsize=(10, 8))
 
     # Define number of samples to plot
-    num_samples = min(5000, samples)
+    num_samples = min(5000, n_samples)
 
     mpl.rcParams['font.family'] = 'Times New Roman'
-
 
     # First subplot
     plt.subplot(2, 1, 2)
@@ -165,7 +168,7 @@ def reservoir():
     ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
     ax1.xaxis.offsetText.set_fontsize(28)
     ax1.yaxis.offsetText.set_fontsize(28)
-    #plt.grid(True)
+    # plt.grid(True)
 
     # Second subplot
     plt.subplot(2, 1, 1)
@@ -190,7 +193,7 @@ def reservoir():
     ax2.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
     ax2.xaxis.offsetText.set_fontsize(28)
     ax2.yaxis.offsetText.set_fontsize(28)
-    #plt.grid(True)
+    # plt.grid(True)
 
     plt.tight_layout()
     plt.show()

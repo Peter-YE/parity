@@ -9,8 +9,6 @@ def envelope_extraction(signal, n_node, n_step):
     analytic_signal = hilbert(signal)
     envelope = np.abs(analytic_signal)
     envelope = (envelope - np.min(envelope)) / (np.max(envelope) - np.min(envelope))
-    indices = np.linspace(0, len(envelope) - 1, n_node * n_step, dtype=int)
-    envelope = envelope[indices]
     return envelope
 
 
@@ -109,3 +107,4 @@ def ridge_regression(x_train, y_train, x_test, y_test):
     y_test = np.argmax(y_test, axis=1)
     accuracy = np.mean(y_pred == y_test)
     print(f"Regression accuracy: {accuracy}")
+    return w

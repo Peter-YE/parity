@@ -24,6 +24,10 @@ def main():
 
         # Extract envelope
         envelope = utility.envelope_extraction(v1, n_node, n_step)
+        envelope_plot = envelope
+        # Sample envelope to create virtual nodes
+        indices = np.linspace(0, len(envelope) - 1, n_node * n_step, dtype=int)
+        envelope = envelope[indices]
         # Create dataset with n_node
 
         x_data, y_data = utility.create_dataset(n_node, n_step, envelope, parity)
@@ -38,7 +42,7 @@ def main():
 
         # Predict and plot
 
-        # # Remove comment to plot benchmarking results
+        # Remove comment to plot benchmarking results
         predictions = model.predict(x_data)
         predictions = prediction_reg[:, 1]
         plt.subplot(3, 1, order - 1)
@@ -69,18 +73,18 @@ def main():
             plt.tick_params(labelbottom=False)
 
         # # Remove comment to plot comparison between signal and envelope
-        # plt.figure(figsize=(14, 8))
+        # plt.figure(figsize=(20, 8))
         # indices = np.linspace(0, len(v1) - 1, n_node * n_step, dtype=int)
-        # v1_plot = v1[indices]
-        # plt.plot(time[500:1000], v1_plot[500:1000], label='signal', color='C0', linewidth=2)
+        # v1_plot = v1
+        # plt.plot(time[0:30000], v1_plot[0:30000], label='signal', color='#6B98C4', linewidth=2)
         #
         #
         # # Plot classification result
-        # plt.plot(time[500:1000], envelope[500:1000]/16000, label='envelope', linestyle='--', color='orange',
-        #          linewidth=5)
+        # plt.plot(time[0:30000], envelope_plot[0:30000]/75, label='envelope', color='#F5867F',
+        #          linewidth=4)
         # plt.xlabel('Time (s)', fontsize=30)
         # plt.ylabel('Displacement Velocity (m/s)', fontsize=30)
-        # plt.legend(loc='best', fontsize=30)
+        # # plt.legend(loc='best', fontsize=30)
         # plt.tick_params(axis='both', labelsize=30)
         # ax1 = plt.gca()  # Get current axes
         # ax1.xaxis.offsetText.set_fontsize(30)

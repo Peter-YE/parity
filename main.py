@@ -54,7 +54,7 @@ def main():
 
         # Plot target signal
         plt.plot(time[500:1000], parity[500:1000], label='target', color='orange', linewidth=2)
-        plt.plot(time[500:1000], predictions[500:1000], label='classification', linestyle='--', color='C0',linewidth=2)
+        plt.plot(time[500:1000], predictions[500:1000], label='classification', linestyle='--', color='C0', linewidth=2)
         # Remove top and right spines for a cleaner look
         ax = plt.gca()
         ax.spines['top'].set_visible(False)

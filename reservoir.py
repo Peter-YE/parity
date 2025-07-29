@@ -23,7 +23,6 @@ Q = 330  # Quality factor
 alpha = 0.5
 beta = 1.54e-4  # Constant for the cubic nonlinearity
 
-
 # Time settings
 t_min = 0  # Start time (s)
 t_max = 5e-4  # End time (s)
@@ -31,7 +30,6 @@ dt = 1e-9  # Time step (s) i.e. sampling rate
 time = np.arange(t_min, t_max + dt, dt)
 time = time[1:]  # Remove the first element to match the size of other arrays
 n_samples = len(time)
-
 
 # Initial conditions
 z1_0 = 0  # Initial displacement of resonator 1
@@ -86,14 +84,15 @@ mask_real = np.repeat(mask, n_samples // (n_mask * n_steps))
 print("time size", np.size(time))
 print("step size", np.size(step_val_real))
 
-
 """real time values"""
+
+
 def mask_function(t):
     # if t < t_min + tau:
     #     return mask_real[0]
     # else:
-        index = int((t - t_min) // dt)
-        return mask_real[index]
+    index = int((t - t_min) // dt)
+    return mask_real[index]
 
 
 def step_function(t):
@@ -111,12 +110,14 @@ def feedback(t):
         index = int((t - tau - t_min) // dt)
         return v1[index]
 
-"""Forcing functions"""
-def F_elec1(t, y):
 
-    return (epsilon_0 * A * ((step_function(t)* mask_function(t)+0.7* feedback(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
-            (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
-                                       (2 * (g0 + y[0]) ** 2))
+"""Forcing functions"""
+
+
+def F_elec1(t, y):
+    return ((epsilon_0 * A * ((step_function(t) * mask_function(t) + 0.7 * feedback(t) + 1) + VAC1 * np.sin(omega0 * t)) ** 2 /
+            (2 * (g0 - y[0]) ** 2))
+            - (epsilon_0 * A * (step_function(t)) ** 2 / (2 * (g0 + y[0]) ** 2)))
     # return (epsilon_0 * A * ((step_function(t) * mask_function(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))  - (epsilon_0 * A * (step_function(t)) ** 2 /
     #     (2 * (g0 + y[0]) ** 2))
@@ -126,11 +127,15 @@ def F_elec1(t, y):
     # return (epsilon_0 * A * (VDC+(step_function(t) + feedback(t) + mask_function(t))*np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))
 
+
 """Forcing function with step input only"""
+
+
 def F_elec1_orig(t, y):
     return (epsilon_0 * A * ((step_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
-        (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
-        (2 * (g0 + y[0]) ** 2))
+            (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
+                                       (2 * (g0 + y[0]) ** 2))
+
 
 def F_elec2(t, y):
     if t > tau:
@@ -142,6 +147,8 @@ def F_elec2(t, y):
 
 
 """Differential equations"""
+
+
 def dydt(t, y):
     return np.array([
         y[1],
@@ -150,7 +157,10 @@ def dydt(t, y):
         F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta * y[2] ** 3
     ])
 
+
 """Differential equations"""
+
+
 def dydt_orig(t, y):
     return np.array([
         y[1],
@@ -159,7 +169,10 @@ def dydt_orig(t, y):
         F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta * y[2] ** 3
     ])
 
+
 """Reservoir simulation"""
+
+
 def reservoir():
     # Runge-Kutta integration
     for i in range(n_samples - 1):
@@ -200,9 +213,6 @@ def reservoir():
         z2_orig[i + 1] = y_next[2]
         v2_orig[i + 1] = y_next[3]
 
-
-
-
     # Plotting
     plt.figure(figsize=(20, 32))
 
@@ -221,9 +231,9 @@ def reservoir():
     # plt.step(mask_time[num_min:num_max],mask[num_min:num_max])
     plt.step(time[plot_min:plot_max], step_val_real[plot_min:plot_max], where='post', linewidth=5, color='#F5867F')
 
-    #plt.xlabel('Time (s)', fontsize=28)
+    # plt.xlabel('Time (s)', fontsize=28)
     plt.ylabel('Input Value', fontsize=28)
-    #plt.title('Step Input Function', fontsize=29)
+    # plt.title('Step Input Function', fontsize=29)
     plt.tick_params(axis='both', labelsize=28)
 
     ax2 = plt.gca()
@@ -231,8 +241,6 @@ def reservoir():
     ax2.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
     ax2.xaxis.offsetText.set_fontsize(28)
     ax2.yaxis.offsetText.set_fontsize(28)
-
-
 
     # second subplot: masked input
     masked = np.zeros_like(time)
@@ -250,13 +258,12 @@ def reservoir():
     ax2.xaxis.offsetText.set_fontsize(28)
     ax2.yaxis.offsetText.set_fontsize(28)
 
-
     # third subplot: response with original input
     plt.subplot(4, 1, 3)
-    plt.plot(time[plot_min:plot_max], v1_orig[plot_min:plot_max], linewidth=2, label='v₁(t)',color='#71BFB2')
+    plt.plot(time[plot_min:plot_max], v1_orig[plot_min:plot_max], linewidth=2, label='v₁(t)', color='#71BFB2')
     plt.xlabel('Time (s)', fontsize=28)
     plt.ylabel('Displacement\nVelocity (m)', fontsize=28)  # Changed from Velocity (m/s)
-    #plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
+    # plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
     plt.tick_params(axis='both', labelsize=28)
 
     ax1 = plt.gca()
@@ -265,22 +272,20 @@ def reservoir():
     ax1.xaxis.offsetText.set_fontsize(28)
     ax1.yaxis.offsetText.set_fontsize(28)
 
-
     # fourth subplot: response with masked input
     plt.subplot(4, 1, 4)
     plt.plot(time[plot_min:plot_max], v1[plot_min:plot_max], linewidth=2, label='v₁(t)', color='#6B98C4')
     plt.xlabel('Time (s)', fontsize=28)
-    #plt.ylabel('Displacement\nAmplitude (m)', fontsize=28)  # Changed from Velocity (m/s)
-    #plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
+    # plt.ylabel('Displacement\nAmplitude (m)', fontsize=28)  # Changed from Velocity (m/s)
+    # plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
     plt.tick_params(axis='x', labelsize=28)
 
     ax1 = plt.gca()
-    #ax1.set_yticks([])
+    # ax1.set_yticks([])
     ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
     ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
     ax1.xaxis.offsetText.set_fontsize(28)
     # ax1.yaxis.offsetText.set_fontsize(28)
-
 
     plt.tight_layout()
     plt.show()

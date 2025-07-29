@@ -78,7 +78,8 @@ step_val_real = np.repeat(step_val, n_samples // n_steps)
 n_mask = 100  # Size of mask per step
 tau = (t_max - t_min) / n_steps
 theta = tau / n_mask  # Duration of each mask
-mask = 0.45 + (np.random.rand(n_mask)) * (0.70 - 0.45)  # Random mask values
+mask = np.random.choice([0.1, 0.7], size=n_mask)  # Mask values are either 0.45 or 0.70
+# mask = (np.random.rand(n_mask)) * (0.70)
 mask = np.tile(mask, n_steps)
 mask_time = np.linspace(t_min, t_max, n_steps * n_mask)
 mask_real = np.repeat(mask, n_samples // (n_mask * n_steps))
@@ -97,7 +98,10 @@ def mask_function(t):
 
 def step_function(t):
     index = int((t - t_min) // dt)
-    return step_val_real[index]
+    step = step_val_real[index]
+    # rescale the step value to 0-0.4
+    step = step * 0.4
+    return step
 
 
 def feedback(t):
@@ -109,7 +113,8 @@ def feedback(t):
 
 """Forcing functions"""
 def F_elec1(t, y):
-    return (epsilon_0 * A * ((step_function(t)*mask_function(t) + feedback(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
+
+    return (epsilon_0 * A * ((step_function(t)* mask_function(t)+0.7* feedback(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
                                        (2 * (g0 + y[0]) ** 2))
     # return (epsilon_0 * A * ((step_function(t) * mask_function(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
@@ -239,7 +244,7 @@ def reservoir():
     plt.tick_params(axis='x', labelsize=28)
 
     ax2 = plt.gca()
-    ax2.set_yticks([])
+    # ax2.set_yticks([])
     ax2.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
     ax2.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
     ax2.xaxis.offsetText.set_fontsize(28)
@@ -270,7 +275,7 @@ def reservoir():
     plt.tick_params(axis='x', labelsize=28)
 
     ax1 = plt.gca()
-    ax1.set_yticks([])
+    #ax1.set_yticks([])
     ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
     ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
     ax1.xaxis.offsetText.set_fontsize(28)
@@ -284,25 +289,25 @@ def reservoir():
 
     plt.show()
 
-    # # Uncomment if want to plot mask
-    # plt.figure(figsize=(20, 8))
-    # mask = np.zeros_like(time)
-    # for i in range(n_samples - 1):
-    #     t = time[i]
-    #     mask[i] = mask_function(t)
-    # plt.plot(time[plot_min:plot_max], mask[plot_min:plot_max], linewidth=4, label='Mask Function', color='#47A1A2')
-    # plt.xlabel('Time (s)', fontsize=28)
-    # plt.ylabel('Mask Value', fontsize=28)
-    # plt.tick_params(axis='both', labelsize=28)
-    #
-    # ax1 = plt.gca()
-    # ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
-    # ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
-    # plt.yticks(np.arange(0.45, 0.75, 0.05))
-    # ax1.xaxis.offsetText.set_fontsize(28)
-    # ax1.yaxis.offsetText.set_fontsize(28)
-    # # plt.grid(True)
-    # plt.tight_layout()
-    # plt.show()
+    # Uncomment if want to plot mask
+    plt.figure(figsize=(20, 8))
+    mask = np.zeros_like(time)
+    for i in range(n_samples - 1):
+        t = time[i]
+        mask[i] = mask_function(t)
+    plt.plot(time[plot_min:plot_max], mask[plot_min:plot_max], linewidth=4, label='Mask Function', color='#47A1A2')
+    plt.xlabel('Time (s)', fontsize=28)
+    plt.ylabel('Mask Value', fontsize=28)
+    plt.tick_params(axis='both', labelsize=28)
+
+    ax1 = plt.gca()
+    ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    plt.yticks(np.arange(0.45, 0.75, 0.05))
+    ax1.xaxis.offsetText.set_fontsize(28)
+    ax1.yaxis.offsetText.set_fontsize(28)
+    # plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
     return step_time, step_val, time, v1

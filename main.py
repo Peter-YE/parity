@@ -35,15 +35,15 @@ def main():
         w = utility.ridge_regression(x_train, y_train, x_test, y_test)
         # Create TensorFlow dataset
         prediction_reg = x_data @ w
-
-        train_dataset, test_dataset = utility.split_dataset(x_data, y_data, train_ratio, batch_size)
-
-        model = utility.train_model(train_dataset, test_dataset, n_node)
-
-        # Predict and plot
-
-        # Remove comment to plot benchmarking results
-        predictions = model.predict(x_data)
+        # # Uncomment to train the model with NN
+        # train_dataset, test_dataset = utility.split_dataset(x_data, y_data, train_ratio, batch_size)
+        #
+        # model = utility.train_model(train_dataset, test_dataset, n_node)
+        #
+        # # Predict and plot
+        #
+        # # Remove comment to plot benchmarking results
+        # predictions = model.predict(x_data)
         predictions = prediction_reg[:, 1]
         plt.subplot(3, 1, order - 1)
         parity = np.repeat(parity, 10)

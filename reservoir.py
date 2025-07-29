@@ -308,7 +308,7 @@ def reservoir():
     ax1 = plt.gca()
     ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
     ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
-    plt.yticks(np.arange(0.45, 0.75, 0.05))
+    plt.yticks(np.arange(mask.min(), mask.max() + 0.05, 0.05))
     ax1.xaxis.offsetText.set_fontsize(28)
     ax1.yaxis.offsetText.set_fontsize(28)
     # plt.grid(True)

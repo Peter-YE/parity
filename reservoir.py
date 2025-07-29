@@ -57,7 +57,6 @@ z2_orig[0] = z2_0
 v1_orig[0] = v1_0
 v2_orig[0] = v2_0
 kc = -((epsilon_0 * A) / (d0 ** 3)) * ((VAC2 - VAC1) ** 2)
-# kc=1
 
 """Step input"""
 n_steps = 1000

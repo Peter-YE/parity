@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import matplotlib as mpl
 
 # Parameters
-# Define constants
 epsilon_0 = 8.854187817e-12  # Vacuum permittivity (F/m)
 length = 2e-6  # Changed from 'len' to 'length'
 width = 1.33e-7
@@ -18,8 +19,6 @@ m = 0.735 * 4.61356e-17  # Effective mass
 mass = 4.61356e-17
 f0 = 117.0818e6
 omega0 = 2 * np.pi * f0  # Natural frequency in rad/s
-# f1 = 117.0818e6
-# omega = 2 * np.pi * f1
 Q = 330  # Quality factor
 alpha = 0.5
 beta = 1.54e-4  # Constant for the cubic nonlinearity
@@ -27,9 +26,10 @@ beta = 1.54e-4  # Constant for the cubic nonlinearity
 # Time settings
 t_min = 0  # Start time (s)
 t_max = 5e-4  # End time (s)
-dt = 1e-9  # Time step (s)
+dt = 1e-9  # Time step (s) i.e. sampling rate
 time = np.arange(t_min, t_max + dt, dt)
-samples = len(time)
+time = time[1:]  # Remove the first element to match the size of other arrays
+n_samples = len(time)
 
 # Initial conditions
 z1_0 = 0  # Initial displacement of resonator 1
@@ -38,85 +38,146 @@ z2_0 = 0  # Initial displacement of resonator 2
 v2_0 = 0  # Initial velocity of resonator 2
 
 # Preallocate results
-z1 = np.zeros(samples)
-z2 = np.zeros(samples)
-v1 = np.zeros(samples)
-v2 = np.zeros(samples)
+z1 = np.zeros(n_samples)
+z2 = np.zeros(n_samples)
+v1 = np.zeros(n_samples)
+v2 = np.zeros(n_samples)
+z1_orig = np.zeros(n_samples)
+z2_orig = np.zeros(n_samples)
+v1_orig = np.zeros(n_samples)
+v2_orig = np.zeros(n_samples)
 
 # Initial values
 z1[0] = z1_0
 z2[0] = z2_0
 v1[0] = v1_0
 v2[0] = v2_0
-kc = -((epsilon_0 * A) / d0 ** 3) * (VAC2 - VAC1) ** 2
+z1_orig[0] = z1_0
+z2_orig[0] = z2_0
+v1_orig[0] = v1_0
+v2_orig[0] = v2_0
+kc = -((epsilon_0 * A) / (d0 ** 3)) * ((VAC2 - VAC1) ** 2)
 
-# Step input
-steps = 1000
-tau = (t_max - t_min) / steps
-N = 400  # Size of mask
-theta = tau / N  # Duration of each mask
-mask = 0.45 + (np.random.rand(N)) * (0.75 - 0.45)  # Random mask values
-mask = np.tile(mask, steps)
-mask_time = np.linspace(t_min, t_max, steps * N)
-feedback = np.zeros(N)
-step_val = 2 * np.random.randint(0, 2, steps) - 1
-step_time = np.linspace(t_min, t_max, steps)
+"""Step input"""
+n_steps = 1000
+step_val = 2 * np.random.randint(0, 2, n_steps) - 1
+# The following creates non-random steps input
+# step_val = np.zeros(n_steps)
+# for i in range(n_steps):
+#     if i % 2 == 0:
+#         step_val[i] = 1
+#     else:
+#         step_val[i] = -1
+step_time = np.linspace(t_min, t_max, n_steps)
+step_val_real = np.repeat(step_val, n_samples // n_steps)
 
-class Probe:
-    def __init__(self):
-        self.sum = 0
-        self.num = 0
+"""mask function"""
+n_mask = 100  # Size of mask per step
+tau = (t_max - t_min) / n_steps
+theta = tau / n_mask  # Duration of each mask
+mask = np.random.choice([0.1, 0.7], size=n_mask)  # Mask values are either 0.45 or 0.70
+# mask = (np.random.rand(n_mask)) * (0.70)
+mask = np.tile(mask, n_steps)
+mask_time = np.linspace(t_min, t_max, n_steps * n_mask)
+mask_real = np.repeat(mask, n_samples // (n_mask * n_steps))
+print("time size", np.size(time))
+print("step size", np.size(step_val_real))
 
-    def sample_force(self, F_elec):
-        self.sum += abs(F_elec)
-        self.num += 1
-    def average_force(self):
-        return self.sum / self.num
+"""real time values"""
+
 
 def mask_function(t):
-    return np.interp(t, mask_time, mask, left=mask[0], right=mask[-1])
+    # if t < t_min + tau:
+    #     return mask_real[0]
+    # else:
+    index = int((t - t_min) // dt)
+    return mask_real[index]
 
 
 def step_function(t):
-    return np.interp(t, step_time, step_val, left=step_val[0], right=step_val[-1])
+    index = int((t - t_min) // dt)
+    step = step_val_real[index]
+    # rescale the step value to 0-0.4
+    step = step * 0.4
+    return step
 
 
 def feedback(t):
     if t < t_min + tau:
-        return 0
+        return v1[0]
     else:
-        return alpha * np.interp(t - tau, time, v1, left=v1[0], right=v1[-1])
+        index = int((t - tau - t_min) // dt)
+        return v1[index]
 
 
-# Electric force functions
+"""Forcing functions"""
+
+
 def F_elec1(t, y):
-    return (epsilon_0 * A * ((VDC + step_function(t) + feedback(t) + mask_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    return ((epsilon_0 * A * ((step_function(t) * mask_function(t) + 0.7 * feedback(t) + 1) + VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2))
+            - (epsilon_0 * A * (step_function(t)) ** 2 / (2 * (g0 + y[0]) ** 2)))
+    # return (epsilon_0 * A * ((step_function(t) * mask_function(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    #         (2 * (g0 - y[0]) ** 2))  - (epsilon_0 * A * (step_function(t)) ** 2 /
+    #     (2 * (g0 + y[0]) ** 2))
+    # return (epsilon_0 * A * ((step_function(t)* mask_function(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    #         (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
+    #         (2 * (g0 + y[0]) ** 2))
     # return (epsilon_0 * A * (VDC+(step_function(t) + feedback(t) + mask_function(t))*np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))
 
 
+"""Forcing function with step input only"""
+
+
+def F_elec1_orig(t, y):
+    return (epsilon_0 * A * ((step_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
+            (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
+                                       (2 * (g0 + y[0]) ** 2))
+
+
 def F_elec2(t, y):
-    return 0
+    if t > tau:
+        return (epsilon_0 * A * ((step_function(t - tau) + mask_function(t - tau)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+                (2 * (g0 - y[0]) ** 2))
+    else:
+        return (epsilon_0 * A * ((step_function(t) + mask_function(t)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+                (2 * (g0 - y[0]) ** 2))
 
 
-# Differential equations
+"""Differential equations"""
+
+
 def dydt(t, y):
     return np.array([
         y[1],
-        F_elec1(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0**2 * beta * y[0]**3,
+        F_elec1(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0 ** 2 * beta * y[0] ** 3,
         y[3],
-        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0**2 * beta * y[2]**3
+        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta * y[2] ** 3
     ])
 
 
+"""Differential equations"""
+
+
+def dydt_orig(t, y):
+    return np.array([
+        y[1],
+        F_elec1_orig(t, y) / m - (omega0 * y[1] / Q) - (omega0 ** 2) * y[0] - (kc / m) * (y[0] - y[2]) - omega0 ** 2 * beta * y[0] ** 3,
+        y[3],
+        F_elec2(t, y) / m - (omega0 * y[3] / Q) - (omega0 ** 2) * y[2] - (kc / m) * (y[2] - y[0]) - omega0 ** 2 * beta * y[2] ** 3
+    ])
+
+
+"""Reservoir simulation"""
+
+
 def reservoir():
-    probe = Probe()
     # Runge-Kutta integration
-    for i in range(samples - 1):
+    for i in range(n_samples - 1):
         t = time[i]
         y = np.array([z1[i], v1[i], z2[i], v2[i]])
-        probe.sample_force(F_elec1(t, y))
+
         # Runge-Kutta steps
         k1 = dydt(t, y)
         k2 = dydt(t + dt / 2, y + dt * k1 / 2)
@@ -132,33 +193,125 @@ def reservoir():
         z2[i + 1] = y_next[2]
         v2[i + 1] = y_next[3]
 
+    for i in range(n_samples - 1):
+        t = time[i]
+        y = np.array([z1_orig[i], v1_orig[i], z2_orig[i], v2_orig[i]])
+
+        # Runge-Kutta steps
+        k1 = dydt_orig(t, y)
+        k2 = dydt_orig(t + dt / 2, y + dt * k1 / 2)
+        k3 = dydt_orig(t + dt / 2, y + dt * k2 / 2)
+        k4 = dydt_orig(t + dt, y + dt * k3)
+
+        # Update solution
+        y_next = y + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+        # Store results
+        z1_orig[i + 1] = y_next[0]
+        v1_orig[i + 1] = y_next[1]
+        z2_orig[i + 1] = y_next[2]
+        v2_orig[i + 1] = y_next[3]
+
     # Plotting
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(20, 32))
 
     # Define number of samples to plot
-    num_samples = min(5000, samples)
+    plot_min = 0
+    plot_max = 30000
 
-    # First subplot
-    plt.subplot(2, 1, 1)
-    plt.plot(time[:num_samples], z1[:num_samples], 'b-', linewidth=2, label='v_1(t)')
-    plt.plot(time[:num_samples], z2[:num_samples], 'r-', linewidth=1, label='v_2(t)')
-    plt.xlabel('Time (s)', fontsize=12)
-    plt.ylabel('Displacement (m)', fontsize=12)
-    plt.title('Time-Domain Response of Coupled NEMS Resonators', fontsize=14)
-    plt.legend(loc='best')
-    plt.grid(True)
+    mpl.rcParams['font.family'] = 'Times New Roman'
 
-    # Second subplot
-    plt.subplot(2, 1, 2)
-    num_step_samples = int((t_min + num_samples * dt) // tau) + 1
-    plt.step(step_time[:num_step_samples], step_val[:num_step_samples],
-             where='post', linewidth=1.5)
-    plt.xlabel('Time (s)')
-    plt.ylabel('Step Value')
-    plt.title('Step Function')
-    plt.grid(True)
+    # first subplot: original input
+    plt.subplot(4, 1, 1)
+    # Uncomment if want to compare with mask
+    # num_min = int(num_step_samples_min*N)
+    # num_max = int(num_step_samples_max*N)
+    # mask_time = np.linspace(t_min, t_max, num_step_samples_max * N)
+    # plt.step(mask_time[num_min:num_max],mask[num_min:num_max])
+    plt.step(time[plot_min:plot_max], step_val_real[plot_min:plot_max], where='post', linewidth=5, color='#F5867F')
+
+    # plt.xlabel('Time (s)', fontsize=28)
+    plt.ylabel('Input Value', fontsize=28)
+    # plt.title('Step Input Function', fontsize=29)
+    plt.tick_params(axis='both', labelsize=28)
+
+    ax2 = plt.gca()
+    ax2.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax2.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    ax2.xaxis.offsetText.set_fontsize(28)
+    ax2.yaxis.offsetText.set_fontsize(28)
+
+    # second subplot: masked input
+    masked = np.zeros_like(time)
+    for i in range(n_samples - 1):
+        t = time[i]
+        masked[i] = step_function(t) * mask_function(t)
+    plt.subplot(4, 1, 2)
+    plt.plot(time[plot_min:plot_max], masked[plot_min:plot_max], linewidth=2, label='Masked Input')
+    plt.tick_params(axis='x', labelsize=28)
+
+    ax2 = plt.gca()
+    # ax2.set_yticks([])
+    ax2.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax2.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    ax2.xaxis.offsetText.set_fontsize(28)
+    ax2.yaxis.offsetText.set_fontsize(28)
+
+    # third subplot: response with original input
+    plt.subplot(4, 1, 3)
+    plt.plot(time[plot_min:plot_max], v1_orig[plot_min:plot_max], linewidth=2, label='v₁(t)', color='#71BFB2')
+    plt.xlabel('Time (s)', fontsize=28)
+    plt.ylabel('Displacement\nVelocity (m)', fontsize=28)  # Changed from Velocity (m/s)
+    # plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
+    plt.tick_params(axis='both', labelsize=28)
+
+    ax1 = plt.gca()
+    ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    ax1.xaxis.offsetText.set_fontsize(28)
+    ax1.yaxis.offsetText.set_fontsize(28)
+
+    # fourth subplot: response with masked input
+    plt.subplot(4, 1, 4)
+    plt.plot(time[plot_min:plot_max], v1[plot_min:plot_max], linewidth=2, label='v₁(t)', color='#6B98C4')
+    plt.xlabel('Time (s)', fontsize=28)
+    # plt.ylabel('Displacement\nAmplitude (m)', fontsize=28)  # Changed from Velocity (m/s)
+    # plt.title('Time-Domain Response of NEMS Resonators', fontsize=29)
+    plt.tick_params(axis='x', labelsize=28)
+
+    ax1 = plt.gca()
+    # ax1.set_yticks([])
+    ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    ax1.xaxis.offsetText.set_fontsize(28)
+    # ax1.yaxis.offsetText.set_fontsize(28)
 
     plt.tight_layout()
     plt.show()
-    print("Average Electric Force:", probe.average_force())
+    plot_min = 0
+    plot_max = 1000
+
+    plt.show()
+
+    # Uncomment if want to plot mask
+    plt.figure(figsize=(20, 8))
+    mask = np.zeros_like(time)
+    for i in range(n_samples - 1):
+        t = time[i]
+        mask[i] = mask_function(t)
+    plt.plot(time[plot_min:plot_max], mask[plot_min:plot_max], linewidth=4, label='Mask Function', color='#47A1A2')
+    plt.xlabel('Time (s)', fontsize=28)
+    plt.ylabel('Mask Value', fontsize=28)
+    plt.tick_params(axis='both', labelsize=28)
+
+    ax1 = plt.gca()
+    ax1.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax1.ticklabel_format(axis='x', style='sci', scilimits=(-5, -5))
+    plt.yticks(np.arange(mask.min(), mask.max() + 0.05, 0.05))
+    ax1.xaxis.offsetText.set_fontsize(28)
+    ax1.yaxis.offsetText.set_fontsize(28)
+    # plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
     return step_time, step_val, time, v1

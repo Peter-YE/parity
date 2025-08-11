@@ -10,8 +10,56 @@ import matplotlib.ticker as ticker
 def main():
     print("Running...")
 
-    step_time, step_val, time, v1 = reservoir.reservoir()
+    step_time, DTMF_number, time, v1 = reservoir.reservoir()
     plt.figure()
+    n_node = 100  # Number of samples to use as input features
+    # Define split ratio
+    train_ratio = 0.8  # 80% training, 20% testing
+    batch_size = 32
+
+    n_step = len(DTMF_number)  # Number of samples after creating windows
+
+    # Extract envelope
+    envelope = utility.envelope_extraction(v1, n_node, n_step)
+    envelope_plot = envelope
+    # Sample envelope to create virtual nodes
+    indices = np.linspace(0, len(envelope) - 1, n_node * n_step, dtype=int)
+    envelope = envelope[indices]
+    # Create dataset with n_node
+
+    x_data, y_data = utility.create_dataset_ts(n_node, n_step, envelope, DTMF_number,10)
+    x_train, y_train, x_test, y_test = utility.split_dataset_ridge(x_data, y_data, train_ratio)
+    w = utility.ridge_regression(x_train, y_train, x_test, y_test)
+    # Create TensorFlow dataset
+    prediction_reg = x_data @ w
+    # # Uncomment to train the model with NN
+    # train_dataset, test_dataset = utility.split_dataset(x_data, y_data, train_ratio, batch_size)
+    #
+    # model = utility.train_model(train_dataset, test_dataset, n_node)
+    #
+    # # Predict and plot
+    #
+    # # Remove comment to plot benchmarking results
+    # predictions = model.predict(x_data)
+    predictions = prediction_reg[:, 1]
+    DTMF = np.repeat(DTMF_number, 10)
+    # rescale to the range of -1 to 1
+    predictions = np.repeat(predictions, 10)
+    # cap the predictions to -1 and 1
+
+    # Plot target signal
+    plt.plot(time[500:1000], DTMF[500:1000], label='target', color='orange', linewidth=2)
+    plt.plot(time[500:1000], predictions[500:1000], label='classification', linestyle='--', color='C0', linewidth=2)
+    # Remove top and right spines for a cleaner look
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.ylim(top=1.2)
+    plt.ylim(bottom=-1.2)
+    plt.show()
+
+'''
+    For parity benchmarking
     for order in range(2, 5):
         # Calculate parity at each step
         n_node = 100  # Number of samples to use as input features
@@ -90,10 +138,10 @@ def main():
         # ax1.xaxis.offsetText.set_fontsize(30)
         # ax1.yaxis.offsetText.set_fontsize(30)
 
+'''
 
 
 
-    plt.show()
 
 
 if __name__ == '__main__':

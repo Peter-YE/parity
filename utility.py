@@ -37,6 +37,10 @@ def create_dataset(n_node: int, n_step: int, envelope: np.ndarray, parity: np.nd
     y_data = tf.keras.utils.to_categorical((parity + 1) // 2, num_classes=2)
     return x_data, y_data
 
+def create_dataset_ts(n_node: int, n_step: int, envelope: np.ndarray, target: np.ndarray,n_target: int):
+    x_data = envelope.reshape(n_step, n_node)
+    y_data = tf.keras.utils.to_categorical(target, num_classes=n_target)
+    return x_data, y_data
 
 def split_dataset_ridge(x_data, y_data, train_ratio):
     split_index = int(len(x_data) * train_ratio)  # Compute split index

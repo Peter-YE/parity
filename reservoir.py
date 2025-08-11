@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import matplotlib as mpl
+import DTMF
+from parameters import *
 
 # Parameters
 epsilon_0 = 8.854187817e-12  # Vacuum permittivity (F/m)
@@ -18,6 +20,8 @@ VAC2 = 0.0005  # AC voltage 2 (V)
 m = 0.735 * 4.61356e-17  # Effective mass
 mass = 4.61356e-17
 f0 = 117.0818e6
+f = 1000
+omega= 2 * np.pi * f
 omega0 = 2 * np.pi * f0  # Natural frequency in rad/s
 Q = 330  # Quality factor
 alpha = 0.5
@@ -27,6 +31,7 @@ beta = 1.54e-4  # Constant for the cubic nonlinearity
 t_min = 0  # Start time (s)
 t_max = 5e-4  # End time (s)
 dt = 1e-9  # Time step (s) i.e. sampling rate
+sample_rate = 1/dt
 time = np.arange(t_min, t_max + dt, dt)
 time = time[1:]  # Remove the first element to match the size of other arrays
 n_samples = len(time)
@@ -71,6 +76,27 @@ step_val = 2 * np.random.randint(0, 2, n_steps) - 1
 step_time = np.linspace(t_min, t_max, n_steps)
 step_val_real = np.repeat(step_val, n_samples // n_steps)
 
+# Generate DTMF signal
+DTMF_time = np.linspace(t_min*time_ratio, t_max*time_ratio, n_samples)
+DTMF_number = np.random.randint(0, 9, n_steps)
+DTMF_tau = ((t_max - t_min) / n_steps)*time_ratio
+DTMF_signal = []
+for i in range(n_steps):
+    curr_signal = DTMF.DTMF_gen(DTMF_number[i], DTMF_tau)  # Generate DTMF signal for each number
+    DTMF_signal = np.concatenate((DTMF_signal, curr_signal))
+
+# Plot DTMF  signal for one step
+plt.figure(figsize=(10, 4))
+plt.plot(DTMF_time[0:1000], DTMF_signal[0:1000], linewidth=2, color='orange')
+plt.xlabel('Time (s)', fontsize=14)
+plt.ylabel('Amplitude', fontsize=14)
+plt.title('DTMF Signal for One Step', fontsize=16)
+plt.tick_params(axis='both', labelsize=14)
+plt.grid(True)
+plt.show()
+
+
+
 """mask function"""
 n_mask = 100  # Size of mask per step
 tau = (t_max - t_min) / n_steps
@@ -93,6 +119,9 @@ def mask_function(t):
     index = int((t - t_min) // dt)
     return mask_real[index]
 
+def DTMF_function(t):
+    index = int((t - t_min) // dt)
+    return DTMF_signal[index]
 
 def step_function(t):
     index = int((t - t_min) // dt)
@@ -114,9 +143,13 @@ def feedback(t):
 
 
 def F_elec1(t, y):
-    return ((epsilon_0 * A * ((step_function(t) * mask_function(t) + 0.7 * feedback(t) + 1) + VAC1 * np.sin(omega0 * t)) ** 2 /
+    ## Frocing function with AC input
+    return (epsilon_0 * A * (DTMF_function(t)+ VAC1 * np.sin(omega0 * t)) ** 2 /
             (2 * (g0 - y[0]) ** 2))
-            - (epsilon_0 * A * (step_function(t)) ** 2 / (2 * (g0 + y[0]) ** 2)))
+    ## Forcing fuction with step input and mask
+    # return ((epsilon_0 * A * ((step_function(t) * mask_function(t) + 0.7 * feedback(t) + 1) + VAC1 * np.sin(omega * t)) ** 2 /
+    #         (2 * (g0 - y[0]) ** 2))
+    #         - (epsilon_0 * A * (step_function(t)) ** 2 / (2 * (g0 + y[0]) ** 2)))
     # return (epsilon_0 * A * ((step_function(t) * mask_function(t)+1) + VAC1 * np.sin(omega0 * t)) ** 2 /
     #         (2 * (g0 - y[0]) ** 2))  - (epsilon_0 * A * (step_function(t)) ** 2 /
     #     (2 * (g0 + y[0]) ** 2))
@@ -131,17 +164,19 @@ def F_elec1(t, y):
 
 
 def F_elec1_orig(t, y):
-    return (epsilon_0 * A * ((step_function(t)) + VAC1 * np.sin(omega0 * t)) ** 2 /
-            (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
-                                       (2 * (g0 + y[0]) ** 2))
+    return (epsilon_0 * A * (DTMF_function(t) + VAC1 * np.sin(omega0 * t)) ** 2 /
+            (2 * (g0 - y[0]) ** 2))
+    # return (epsilon_0 * A * ((step_function(t)) + VAC1 * np.sin(omega * t)) ** 2 /
+    #         (2 * (g0 - y[0]) ** 2)) - (epsilon_0 * A * (step_function(t)) ** 2 /
+    #                                    (2 * (g0 + y[0]) ** 2))
 
 
 def F_elec2(t, y):
     if t > tau:
-        return (epsilon_0 * A * ((step_function(t - tau) + mask_function(t - tau)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+        return (epsilon_0 * A * ((step_function(t - tau) + mask_function(t - tau)) + VAC2 * np.sin(omega * t)) ** 2 /
                 (2 * (g0 - y[0]) ** 2))
     else:
-        return (epsilon_0 * A * ((step_function(t) + mask_function(t)) + VAC2 * np.sin(omega0 * t)) ** 2 /
+        return (epsilon_0 * A * ((step_function(t) + mask_function(t)) + VAC2 * np.sin(omega * t)) ** 2 /
                 (2 * (g0 - y[0]) ** 2))
 
 
@@ -247,7 +282,7 @@ def reservoir():
         t = time[i]
         masked[i] = step_function(t) * mask_function(t)
     plt.subplot(4, 1, 2)
-    plt.plot(time[plot_min:plot_max], masked[plot_min:plot_max], linewidth=2, label='Masked Input')
+    plt.plot(time[plot_min:plot_max], DTMF_signal[plot_min:plot_max], linewidth=2, label='Masked Input')
     plt.tick_params(axis='x', labelsize=28)
 
     ax2 = plt.gca()
@@ -314,4 +349,4 @@ def reservoir():
     plt.tight_layout()
     plt.show()
 
-    return step_time, step_val, time, v1
+    return step_time, DTMF_number, time, v1
